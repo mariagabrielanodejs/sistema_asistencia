@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrativo - Usuarios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@heroicons/v2.0.18/24/outline/index.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .message-alert {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease-out;
+        }
+
+
+        @keyframes drawCheck {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes circlePulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.25;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 0.3;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 0.25;
+            }
+        }
+
+
+        @keyframes drawX {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes circleShake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(2px);
+            }
+
+            75% {
+                transform: translateX(-2px);
+            }
+        }
+
+        svg circle {
+            animation: circlePulse 1.5s ease-in-out infinite;
+        }
+
+        svg circle {
+            animation: circleShake 0.4s ease-in-out 0.2s;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <div class="min-h-screen flex">
+        <!-- Sidebar -->
+        <div class="bg-white w-64 p-4 border-r">
+            <h2 class="text-xl font-bold mb-4 text-center">Administración</h2>
+            <nav class="space-y-2">
+                <a href="/admin" class="flex items-center gap-2 text-blue-600 bg-blue-50 p-2 rounded">
+                    <i class="fas fa-users"></i>
+                    Usuarios
+                </a>
+                <a href="/admin/asistencias"
+                    class="flex items-center gap-2 text-gray-600 hover:text-blue-600 p-2 rounded hover:bg-gray-50">
+                    <i class="fas fa-calendar-check"></i>
+                    Asistencias
+                </a>
+                <div class="flex justify-center">
+                    <a href="/logoutadmin"
+                        class="absolute bottom-4 items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                        <i class="fas fa-right-from-bracket mr-2"></i> Cerrar sesión
+                    </a>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Contenido principal -->
+        <div class="flex-1 p-8">
+            <!-- Encabezado -->
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">Gestión de Usuarios</h1>
+                <button onclick="openAddModal()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors">
+                    <i class="fa-solid fa-user-plus"></i>
+                    Nuevo Usuario
+                </button>
+            </div>
+
+            <!-- Tabla de Usuarios -->
+            <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Rol</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Usuario</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Nombre</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Cédula</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                        <% users.forEach(user=> { %>
+                            <tr>
+                                <td class="px-6 py-4">
+                                    <span
+                                        class="px-3 py-1 text-sm rounded-full <%= user.id_rol === 1 ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' %>">
+                                        <%= user.id_rol===1 ? 'Administrador' : 'Empleado' %>
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 font-medium">@<%= user.username %>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <%= user.nombre %>
+                                        <%= user.apellido %>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <%= user.cedula %>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex gap-2">
+                                        <!-- Botón de editar -->
+                                        <button data-user-id="<%= user.id_usuario %>" class="edit-btn text-blue-600 hover:text-blue-800">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <!-- Enlace de eliminar -->
+                                        <a class="text-red-600 hover:text-red-800 cursor-pointer" href="/admin/users/delete/<%= user.id_usuario %>">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                                
+                            </tr>
+                            <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario para Agregar Usuario -->
+    <div id="add-user-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">Nuevo Usuario</h3>
+            <form method="POST" action="/admin/users/create">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Rol</label>
+                        <select name="id_rol" class="w-full border rounded-lg px-4 py-2" required>
+                            <option value="1">Administrador</option>
+                            <option value="2">Empleado</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Nombre</label>
+                            <input type="text" name="nombre" class="w-full border rounded-lg px-4 py-2" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Apellido</label>
+                            <input type="text" name="apellido" class="w-full border rounded-lg px-4 py-2" required>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Cédula</label>
+                        <input type="text" name="cedula" class="w-full border rounded-lg px-4 py-2" pattern="^([VEve]?\d{6,9}|[JjPEpe]\d{8})$" 
+                        title="Cédula venezolana válida (Ej: V12345678, 123456789, J12345678)" 
+                         required>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nombre de usuario</label>
+                        <input type="text" name="username" class="w-full border rounded-lg px-4 py-2" required>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Contraseña</label>
+                        <input type="password" name="contrasena" class="w-full border rounded-lg px-4 py-2" required>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" onclick="closeAddModal()"
+                        class="px-4 py-2 border rounded-lg hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Crear Usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Formulario para Editar Usuario -->
+    <div id="edit-user-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">Editar Usuario</h3>
+            <form method="POST" action="/admin/users/update">
+                <input type="hidden" name="id_usuario" id="edit-user-id">
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Rol</label>
+                        <select name="id_rol" id="edit-id_rol" class="w-full border rounded-lg px-4 py-2" required>
+                            <option value="1">Administrador</option>
+                            <option value="2">Empleado</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Nombre</label>
+                            <input type="text" name="nombre" id="edit-nombre" class="w-full border rounded-lg px-4 py-2"
+                                required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Apellido</label>
+                            <input type="text" name="apellido" id="edit-apellido"
+                                class="w-full border rounded-lg px-4 py-2" required>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Cédula</label>
+                        <input type="text" name="cedula" id="edit-cedula" class="w-full border rounded-lg px-4 py-2"
+                        pattern="^([VEve]?\d{6,9}|[JjPEpe]\d{8})$" 
+                        title="Cédula venezolana válida (Ej: V12345678, 123456789, J12345678)" 
+                        required>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nombre de usuario</label>
+                        <input type="text" name="username" id="edit-username" class="w-full border rounded-lg px-4 py-2"
+                            required>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nueva Contraseña</label>
+                        <input type="password" name="contrasena" class="w-full border rounded-lg px-4 py-2"
+                            placeholder="Dejar en blanco para no cambiar">
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" onclick="closeEditModal()"
+                        class="px-4 py-2 border rounded-lg hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Actualizar Usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Funciones para Add Modal
+    function openAddModal() {
+        document.getElementById('add-user-modal').classList.remove('hidden');
+    }
+
+    function closeAddModal() {
+        document.getElementById('add-user-modal').classList.add('hidden');
+    }
+
+    // Funciones para Edit Modal
+    function openEditModal(user) {
+        document.getElementById('edit-user-id').value = user.id_usuario;
+        document.getElementById('edit-id_rol').value = user.id_rol;
+        document.getElementById('edit-nombre').value = user.nombre;
+        document.getElementById('edit-apellido').value = user.apellido;
+        document.getElementById('edit-cedula').value = user.cedula;
+        document.getElementById('edit-username').value = user.username;
+        document.getElementById('edit-user-modal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+        document.getElementById('edit-user-modal').classList.add('hidden');
+    }
+
+    // Manejar clic en botones de editar
+    document.querySelectorAll('.edit-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+            const userId = button.dataset.userId;
+            try {
+                const response = await fetch(`/admin/users/${userId}`);
+                const user = await response.json();
+                openEditModal(user);
+            } catch (error) {
+                console.error('Error al obtener usuario:', error);
+            }
+        });
+    });
+
+    // Cerrar modales al hacer click fuera
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if(e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    });
+
+
+
+
+    </script>   
+    <!-- Mensajes de estado -->
+    <% if (error) { %>
+        <div
+            class="fixed bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg flex items-center space-x-2 message-alert">
+            <svg class="text-red-500 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg" style="transition: all 0.3s ease-in-out;">
+                <!-- Círculo de fondo -->
+                <circle cx="12" cy="12" r="10" stroke-width="2" stroke="currentColor" fill="none" class="opacity-25" />
+
+                <!-- Cruz animada -->
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"
+                    class="transition-all duration-300"
+                    style="stroke-dasharray: 34; stroke-dashoffset: 34; animation: drawX 0.4s ease-out forwards 0.2s" />
+            </svg>
+            <span>
+                <%= error %>
+            </span>
+        </div>
+        <% } %>
+
+            <% if (success) { %>
+                <div
+                    class="fixed bottom-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg flex items-center space-x-2 message-alert">
+                    <svg class="text-green-500 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                        style="transform: rotate(0deg); transition: all 0.3s ease-in-out;">
+                        <!-- Círculo de fondo -->
+                        <circle cx="12" cy="12" r="10" stroke-width="2" stroke="currentColor" fill="none"
+                            class="opacity-25" />
+
+                        <!-- Checkmark animado -->
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"
+                            class="transition-all duration-300"
+                            style="stroke-dasharray: 24; stroke-dashoffset: 24; animation: drawCheck 0.5s ease-out forwards 0.2s" />
+                    </svg>
+                    <span>
+                        <%= success %>
+                    </span>
+                </div>
+                <% } %>
+
+                    <script>
+                        document.addEventListener('DOMContentLoaded', () => {
+                            // Animación de entrada
+                            const messages = document.querySelectorAll('.message-alert');
+                            messages.forEach(message => {
+                                // Agregar animación de entrada
+                                message.style.transform = 'translateX(120%)';
+                                message.style.opacity = '0';
+
+                                // Trigger reflow
+                                void message.offsetWidth;
+
+                                message.style.transition = 'all 0.3s ease-out';
+                                message.style.transform = 'translateX(0)';
+                                message.style.opacity = '1';
+
+                                // Configurar temporizador para desaparecer
+                                setTimeout(() => {
+                                    message.style.transform = 'translateX(120%)';
+                                    message.style.opacity = '0';
+
+                                    // Eliminar elemento después de la animación
+                                    setTimeout(() => {
+                                        message.remove();
+                                    }, 300);
+                                }, 2500); // 5 segundos
+                            });
+                        });
+        </script>
+</body>
+
+</html>

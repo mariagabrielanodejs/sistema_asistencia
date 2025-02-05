@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        .input-group {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Borde completo y placeholder al enfocar */
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            padding-left: 2rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        /* Efecto al enfocar el input */
+        .input-group input:focus,
+        .input-group input:valid{
+            border: 1px solid #2c5282; /* Borde azul oscuro */
+            box-shadow: 0 0 0 3px rgba(44, 82, 130, 0.1); /* Sutil glow */
+        }
+
+
+        .input-group input:focus ~ i,
+        .input-group input:valid ~ i {
+            color: #2c5282;
+        }
+
+
+
+        /* Placeholder dinámico */
+        .input-group input::placeholder {
+            opacity: 0; /* Placeholder oculto por defecto */
+            transition: opacity 0.2s ease;
+        }
+
+        .input-group input:focus::placeholder {
+            opacity: 1; /* Mostrar placeholder al enfocar */
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 9px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #718096;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        /* Label flotante */
+        .input-group label {
+            position: absolute;
+            left: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #718096;
+            background: white;
+            padding: 0 4px;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .input-group input:focus ~ label,
+        .input-group input:not(:placeholder-shown) ~ label {
+            top: 0;
+            transform: translateY(-50%) scale(0.9);
+            color: #2c5282;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-96">
+        <% if(result) { %>            
+            <div id="alert-div" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 relative transition-opacity duration-300" role="alert">
+                <button 
+                    onclick="this.parentElement.style.display = 'none'" 
+                    class="absolute top-0 right-0 pt-1 pr-2 text-red-700 hover:text-red-900 cursor-pointer focus:outline-none"
+                >
+                    X
+                </button>
+                <p><%= message %></p>
+            </div>
+            <% } %>
+
+        <form method="POST" action="/admin_login">
+            
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="username" 
+                    placeholder="Ej: usuario123"
+                    class="pl-10"
+                    name="usuario"
+                    required>
+                <label for="username">Usuario</label>
+                <i class="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-800"></i>
+            </div>
+
+            <!-- Campo de Contraseña -->
+            <div class="input-group">
+                <input 
+                    type="password" 
+                    id="password" 
+                    placeholder="Mínimo 8 caracteres"
+                    class="pl-10"
+                    name="contrasena"
+                    required>
+                <label for="password">Contraseña</label>
+                <i class="fas fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-800"></i>
+            </div>
+
+            <button type="submit" class="w-full bg-blue-800 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors">
+                Enviar
+            </button>
+        </form>
+    </div>
+</body>
+</html>
