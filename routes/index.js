@@ -7,6 +7,9 @@ const XLSX = require('xlsx');
 const cron = require('node-cron');
 const { createObjectCsvStringifier } = require('csv-writer');
 const PDFDocument = require('pdfkit');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
+
 
 const fecha = () => {
   let date = new Date().toLocaleString("en-US", { timeZone: "America/Caracas" });
@@ -70,8 +73,8 @@ router.get('/', auth.isGuest, (req, res) => {
 
 router.get('/visitante', auth.isAuthenticated, (req, res) => {
   res.render('visitante', {
-    id_usuario: req.session.userId,
-    username: req.session.username,
+    id_usuario: req.user.userId,
+    username: req.user.username,
     error: req.query.error,
     info: req.query.info
   });
@@ -116,9 +119,26 @@ router.post('/admin_login', async (req, res) => {
       });
     }
 
-    req.session.userId = user.id_usuario;
-    req.session.username = user.username;
-    req.session.rol = user.id_rol;
+    
+     const token = jwt.sign(
+      {
+        userId: user.id_usuario,
+        username: user.username,
+        rol: user.id_rol
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 3600000
+    });
+
+    res.redirect('/admin');
+
+
     res.redirect('/admin');
   } catch (error) {
     console.error('Error en login:', error);
@@ -129,26 +149,16 @@ router.post('/admin_login', async (req, res) => {
   }
 });
 
-
 router.get('/logout', (req, res) => {
-  req.session.destroy(err => {
-    if (err) {
-      return res.redirect('/visitante?error=Error al cerrar sesión');
-    }
-    res.clearCookie('session_cookie');
-    res.redirect('/');
-  });
+  res.clearCookie('token');
+  res.redirect('/');
 });
 
 
 router.get('/logoutadmin', (req, res) => {
-  req.session.destroy(err => {
-    if (err) {
-      return res.redirect('/visitante?error=Error al cerrar sesión');
-    }
-    res.clearCookie('session_cookie');
-    res.redirect('/admin_login');
-  });
+  res.clearCookie('token');
+  res.redirect('/admin_login');
+  
 });
 
 
@@ -179,9 +189,24 @@ router.post('/login', async (req, res) => {
     }
 
 
-    req.session.userId = user.id_usuario;
-    req.session.username = user.username;
-    req.session.rol = user.id_rol;
+     // Crear el token JWT
+     const token = jwt.sign(
+      {
+        userId: user.id_usuario,
+        username: user.username,
+        rol: user.id_rol
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // Configurar la cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 3600000 // 1 hora en milisegundos
+    });
+
 
     res.redirect('/visitante');
 
@@ -211,7 +236,7 @@ router.get('/visitante/asistencia/:id', auth.isAuthenticated, async (req, res) =
 
     await pool.execute(
       'INSERT INTO asistencia (id_usuario, fecha, hora, estado, rol) VALUES (?, ?, ?, "Asistente", ?)',
-      [id, fechaActual, horaActual, req.session.rol]
+      [id, fechaActual, horaActual, req.user.rol]
     );
     res.redirect('/visitante?info=Asistencia registrada con éxito.');
   } catch (error) {
@@ -251,15 +276,15 @@ const getAsistencias = async (fechaHoy) => {
 };
 
 const isAdmin = (req, res, next) => {
-  if (req.session.userId && req.session.rol === 1) {
-
-    return next();
+  if (!req.user || req.user.rol !== 1) {
+    return res.redirect('/admin_login');
   }
-  res.redirect('/admin_login');
+  next();
 };
 
-router.get('/admin', isAdmin, async (req, res) => {
+router.get('/admin', auth.isAuthenticated, isAdmin, async (req, res) => {
   try {
+    console.log(req.user.rol)
     const users = await getUsers();
     res.render('admin', {
       users,
@@ -268,13 +293,16 @@ router.get('/admin', isAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Error en admin:', error);
-    res.render('error', {
-      message: 'Error en el sistema'
-    });
+    if (!res.headersSent) {
+      res.render('error', {
+        message: 'Error en el sistema'
+      });
+    }
   }
 });
 
-router.get('/admin/asistencias/export/:name', isAdmin, async (req, res) => {
+
+router.get('/admin/asistencias/export/:name',  auth.isAuthenticated, isAdmin, async (req, res) => {
   try {
     const fechaHoy = req.params.name;
     const asistencias = await getAsistencias(fechaHoy);
@@ -306,7 +334,7 @@ router.get('/admin/asistencias/export/:name', isAdmin, async (req, res) => {
   }
 });
 
-router.get('/admin/asistencias/export/csv/:name', isAdmin, async (req, res) => {
+router.get('/admin/asistencias/export/csv/:name', auth.isAuthenticated, isAdmin,  async (req, res) => {
   try {
     const fechaHoy = req.params.name;
     const asistencias = await getAsistencias(fechaHoy);
@@ -340,7 +368,7 @@ router.get('/admin/asistencias/export/csv/:name', isAdmin, async (req, res) => {
   }
 });
 
-router.get('/admin/asistencias/export/pdf/:name', isAdmin, async (req, res) => {
+router.get('/admin/asistencias/export/pdf/:name', auth.isAuthenticated, isAdmin, async (req, res) => {
   try {
     const fechaHoy = req.params.name;
     const asistencias = await getAsistencias(fechaHoy);
@@ -447,8 +475,10 @@ router.get('/admin/asistencias/export/pdf/:name', isAdmin, async (req, res) => {
   }
 });
 
-router.get('/admin/asistencias', isAdmin, async (req, res) => {
+router.get('/admin/asistencias', auth.isAuthenticated, isAdmin, async (req, res) => {
   try {
+
+    console.log(req.user.rol)
     const fechaHoy = fecha();
     const HoraHoy = hora();
     const asistencias = await getAsistencias(fechaHoy);
@@ -468,7 +498,7 @@ router.get('/admin/asistencias', isAdmin, async (req, res) => {
 });
 
 
-router.get('/admin/asistencias/fecha', isAdmin, async (req, res) => {
+router.get('/admin/asistencias/fecha', auth.isAuthenticated, isAdmin, async (req, res) => {
   try {
     const fechaHoy = fecha();
     const asistencias = await getAsistencias(fechaHoy);
@@ -486,7 +516,7 @@ router.get('/admin/asistencias/fecha', isAdmin, async (req, res) => {
   }
 });
 
-router.post('/admin/asistencias/fecha', isAdmin, async (req, res) => {
+router.post('/admin/asistencias/fecha', auth.isAuthenticated, isAdmin, async (req, res) => {
   try {
     let { fecha } = req.body;
     fecha = fecha.replace(/\//g, '-').split('-').reverse().join('-');
@@ -505,7 +535,7 @@ router.post('/admin/asistencias/fecha', isAdmin, async (req, res) => {
 });
 
 
-router.get('/admin/users/:id', isAdmin, async (req, res) => {
+router.get('/admin/users/:id', auth.isAuthenticated, isAdmin, async (req, res) => {
   try {
     const [user] = await pool.query(
       'SELECT * FROM usuario WHERE id_usuario = ?',
@@ -518,7 +548,7 @@ router.get('/admin/users/:id', isAdmin, async (req, res) => {
 });
 
 
-router.post('/admin/users/update', isAdmin, async (req, res) => {
+router.post('/admin/users/update', auth.isAuthenticated, isAdmin, async (req, res) => {
   try {
     const { id_usuario, id_rol,  nombre, apellido, cedula, username, contrasena } = req.body;
 
@@ -585,7 +615,7 @@ router.post('/admin/users/update', isAdmin, async (req, res) => {
 
 
 
-router.get('/admin/users/delete/:id', isAdmin, async (req, res) => {
+router.get('/admin/users/delete/:id', auth.isAuthenticated, isAdmin, async (req, res) => {
   try {
     await pool.query(
       'DELETE FROM usuario WHERE id_usuario = ?',
@@ -598,7 +628,7 @@ router.get('/admin/users/delete/:id', isAdmin, async (req, res) => {
 });
 
 
-router.post('/admin/users/create', isAdmin, async (req, res) => {
+router.post('/admin/users/create', auth.isAuthenticated, isAdmin, async (req, res) => {
   try {
     const { id_rol, nombre, apellido, cedula, username, contrasena } = req.body;
     const [users] = await pool.execute(

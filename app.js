@@ -18,18 +18,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(session({
-  key: 'session_cookie',
-  secret: process.env.SESSION_SECRET || 'secret',
-  store: sessionStore,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-      maxAge: 1000 * 60 * 60,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production'
-  }
-}));
+
 
 
 app.use('/', indexRouter);
